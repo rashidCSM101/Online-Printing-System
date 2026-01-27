@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiMail, FiLock, FiAlertCircle } from 'react-icons/fi';
+import { FiMail, FiLock, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
@@ -12,9 +12,20 @@ const Login = () => {
     password: ''
   });
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
+
+  useEffect(() => {
+    // Show success message if redirected from signup
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message);
+      // Clear the message after 5 seconds
+      setTimeout(() => setSuccessMessage(''), 5000);
+    }
+  }, [location]);
 
   const handleChange = (e) => {
     setFormData({
@@ -52,6 +63,13 @@ const Login = () => {
           <h1 className="auth-title">Welcome Back</h1>
           <p className="auth-subtitle">Login to your account</p>
         </div>
+
+        {successMessage && (
+          <div className="success-message">
+            <FiCheckCircle />
+            <span>{successMessage}</span>
+          </div>
+        )}
 
         {error && (
           <div className="error-message">

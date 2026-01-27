@@ -48,9 +48,11 @@ const Signup = () => {
 
     try {
       const { confirmPassword, ...signupData } = formData;
-      const response = await axios.post('/api/auth/register', signupData);
-      signup(response.data);
-      navigate('/dashboard');
+      await axios.post('/api/auth/register', signupData);
+      // Redirect to login page after successful registration
+      navigate('/login', { 
+        state: { message: 'Account created successfully! Please login.' }
+      });
     } catch (err) {
       setError(err.response?.data?.message || 'Signup failed. Please try again.');
     } finally {
