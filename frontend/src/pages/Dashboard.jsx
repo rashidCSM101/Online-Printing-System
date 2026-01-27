@@ -1,17 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiUpload, FiFile, FiSettings, FiDollarSign, FiClock, FiCheckCircle, FiPackage, FiPrinter } from 'react-icons/fi';
+import { 
+  FiUpload, FiFile, FiSettings, FiDollarSign, FiClock, 
+  FiCheckCircle, FiPackage, FiPrinter, FiMenu, FiX,
+  FiHome, FiShoppingBag, FiUser, FiLogOut, FiTrendingUp,
+  FiSun, FiMoon
+} from 'react-icons/fi';
+import { 
+  Chart as ChartJS, 
+  CategoryScale, 
+  LinearScale, 
+  PointElement, 
+  LineElement, 
+  BarElement,
+  ArcElement,
+  Title, 
+  Tooltip, 
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { useNavigate, Link } from 'react-router-dom';
 import './Dashboard.css';
 
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [recentOrders, setRecentOrders] = useState([]);
   const [stats, setStats] = useState({
     totalOrders: 0,
     pendingOrders: 0,
-    completedOrders: 0
+    completedOrders: 0,
+    totalSpent: 0
   });
   const [orderDetails, setOrderDetails] = useState({
     printType: 'black-white',
@@ -37,13 +77,79 @@ const Dashboard = () => {
     try {
       const response = await axios.get('/api/orders/my-orders');
       const orders = response.data;
+      const totalSpent = orders.reduce((sum, order) => sum + order.totalPrice, 0);
+      
       setStats({
         totalOrders: orders.length,
         pendingOrders: orders.filter(o => o.status === 'pending').length,
-        completedOrders: orders.filter(o => o.status === 'completed').length
+        completedOrders: orders.filter(o => o.status === 'completed').length,
+        totalSpent: totalSpent
       });
+      
+      // Get recent 5 orders
+      setRecentOrders(orders.slice(0, 5));
     } catch (err) {
       console.error('Failed to fetch stats');
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  // Chart data for orders trend
+  const ordersChartData = {
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    datasets: [
+      {
+        label: 'Orders',
+        data: [3, 7, 4, 8, 5, 9, 6],
+        borderColor: '#0F2854',
+        backgroundColor: 'rgba(15, 40, 84, 0.1)',
+        fill: true,
+        tension: 0.4
+      }
+    ]
+  };
+
+  // Chart data for print type distribution
+  const printTypeChartData = {
+    labels: ['Black & White', 'Color'],
+    datasets: [
+      {
+        data: [stats.totalOrders * 0.7, stats.totalOrders * 0.3],
+        backgroundColor: ['#0F2854', '#4988C4'],
+        borderWidth: 0
+      }
+    ]
+  };
+
+  // Chart data for monthly spending
+  const spendingChartData = {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    datasets: [
+      {
+        label: 'Spending (Rs.)',
+        data: [1200, 1900, 1500, 2200, 1800, stats.totalSpent],
+        backgroundColor: 'rgba(73, 136, 196, 0.8)',
+        borderRadius: 5
+      }
+    ]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true
+      }
     }
   };
 
@@ -121,21 +227,76 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="dashboard">
-      <div className="container">
-        <motion.div
-          className="dashboard-header"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="header-content">
+    <div className="dashboard-layout">
+      {/* Sidebar */}
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        <div className="sidebar-header">
+          <h2 className="sidebar-logo">PrintHub</h2>
+          <button className="sidebar-close" onClick={() => setSidebarOpen(false)}>
+            <FiX />
+          </button>
+        </div>
+        
+        <nav className="sidebar-nav">
+          <Link to="/dashboard" className="nav-item active">
+            <FiHome /> Dashboard
+          </Link>
+          <Link to="/orders" className="nav-item">
+            <FiShoppingBag /> My Orders
+          </Link>
+          <a href="#upload" className="nav-item" onClick={() => setSidebarOpen(false)}>
+            <FiUpload /> New Order
+          </a>
+          <div className="nav-divider"></div>
+          <button className="nav-item nav-logout" onClick={handleLogout}>
+            <FiLogOut /> Logout
+          </button>
+        </nav>
+        
+        <div className="sidebar-footer">
+          <div className="user-info">
+            <div className="user-avatar">
+              <FiUser />
+            </div>
             <div>
-              <h1 className="dashboard-title">Welcome back, {user?.name?.split(' ')[0]}! 👋</h1>
-              <p className="dashboard-subtitle">Manage your printing orders and upload documents</p>
+              <p className="user-name">{user?.name}</p>
+              <p className="user-email">{user?.email}</p>
             </div>
           </div>
-        </motion.div>
+        </div>
+      </aside>
+
+      {/* Overlay */}
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}></div>
+      )}
+
+      {/* Main Content */}
+      <div className="dashboard-main">
+        <div className="dashboard">
+          <div className="container">
+            {/* Header with Menu Button */}
+            <motion.div
+              className="dashboard-header"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="header-content">
+                <div className="header-left">
+                  <button className="menu-btn" onClick={() => setSidebarOpen(true)}>
+                    <FiMenu />
+                  </button>
+                  <div>
+                    <h1 className="dashboard-title">Welcome back, {user?.name?.split(' ')[0]}! 👋</h1>
+                    <p className="dashboard-subtitle">Here's what's happening with your printing orders today</p>
+                  </div>
+                </div>
+                <button className="theme-toggle-btn" onClick={toggleTheme} aria-label="Toggle theme">
+                  {theme === 'light' ? <FiMoon size={22} /> : <FiSun size={22} />}
+                </button>
+              </div>
+            </motion.div>
 
         {/* Statistics Cards */}
         <motion.div 
@@ -151,6 +312,7 @@ const Dashboard = () => {
             <div className="stat-content">
               <p className="stat-label">Total Orders</p>
               <h3 className="stat-value">{stats.totalOrders}</h3>
+              <span className="stat-change">+12% from last month</span>
             </div>
           </div>
           
@@ -161,6 +323,7 @@ const Dashboard = () => {
             <div className="stat-content">
               <p className="stat-label">Pending</p>
               <h3 className="stat-value">{stats.pendingOrders}</h3>
+              <span className="stat-change">In progress</span>
             </div>
           </div>
           
@@ -171,21 +334,62 @@ const Dashboard = () => {
             <div className="stat-content">
               <p className="stat-label">Completed</p>
               <h3 className="stat-value">{stats.completedOrders}</h3>
+              <span className="stat-change">+5 this week</span>
             </div>
           </div>
           
           <div className="stat-card stat-card-info">
             <div className="stat-icon">
-              <FiPrinter />
+              <FiDollarSign />
             </div>
             <div className="stat-content">
-              <p className="stat-label">Quick Print</p>
-              <h3 className="stat-value">Ready</h3>
+              <p className="stat-label">Total Spent</p>
+              <h3 className="stat-value">Rs. {stats.totalSpent}</h3>
+              <span className="stat-change">This month</span>
             </div>
           </div>
         </motion.div>
 
-        <div className="dashboard-content">
+        {/* Charts Section */}
+        <motion.div 
+          className="charts-section"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3><FiTrendingUp /> Orders Trend</h3>
+              <p>Last 7 days</p>
+            </div>
+            <div className="chart-container">
+              <Line data={ordersChartData} options={chartOptions} />
+            </div>
+          </div>
+
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3><FiPrinter /> Print Types</h3>
+              <p>Distribution</p>
+            </div>
+            <div className="chart-container chart-doughnut">
+              <Doughnut data={printTypeChartData} options={{ responsive: true, maintainAspectRatio: false }} />
+            </div>
+          </div>
+
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3><FiDollarSign /> Monthly Spending</h3>
+              <p>Last 6 months</p>
+            </div>
+            <div className="chart-container">
+              <Bar data={spendingChartData} options={chartOptions} />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Upload Section */}
+        <div className="dashboard-content" id="upload">
           <motion.div
             className="upload-section card"
             initial={{ opacity: 0, x: -20 }}
@@ -350,6 +554,8 @@ const Dashboard = () => {
               </ul>
             </div>
           </motion.div>
+        </div>
+          </div>
         </div>
       </div>
     </div>

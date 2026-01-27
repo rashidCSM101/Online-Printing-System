@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiPackage, FiClock, FiCheckCircle, FiXCircle, FiEye } from 'react-icons/fi';
+import { 
+  FiPackage, FiClock, FiCheckCircle, FiXCircle, FiEye,
+  FiMenu, FiX, FiHome, FiShoppingBag, FiUpload, FiLogOut, FiUser,
+  FiSun, FiMoon
+} from 'react-icons/fi';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import './OrderHistory.css';
 
 const OrderHistory = () => {
+  const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -23,6 +34,11 @@ const OrderHistory = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
   const getStatusIcon = (status) => {
@@ -55,26 +71,86 @@ const OrderHistory = () => {
 
   if (loading) {
     return (
-      <div className="order-history">
-        <div className="container">
-          <div className="loading">Loading orders...</div>
+      <div className="dashboard-layout">
+        <div className="dashboard-main">
+          <div className="order-history">
+            <div className="container">
+              <div className="loading">Loading orders...</div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="order-history">
-      <div className="container">
-        <motion.div
-          className="page-header"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 className="page-title">Order History</h1>
-          <p className="page-subtitle">Track and manage all your printing orders</p>
-        </motion.div>
+    <div className="dashboard-layout">
+      {/* Sidebar */}
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        <div className="sidebar-header">
+          <h2 className="sidebar-logo">PrintHub</h2>
+          <button className="sidebar-close" onClick={() => setSidebarOpen(false)}>
+            <FiX />
+          </button>
+        </div>
+        
+        <nav className="sidebar-nav">
+          <Link to="/dashboard" className="nav-item">
+            <FiHome /> Dashboard
+          </Link>
+          <Link to="/orders" className="nav-item active">
+            <FiShoppingBag /> My Orders
+          </Link>
+          <Link to="/dashboard#upload" className="nav-item">
+            <FiUpload /> New Order
+          </Link>
+          <div className="nav-divider"></div>
+          <button className="nav-item nav-logout" onClick={handleLogout}>
+            <FiLogOut /> Logout
+          </button>
+        </nav>
+        
+        <div className="sidebar-footer">
+          <div className="user-info">
+            <div className="user-avatar">
+              <FiUser />
+            </div>
+            <div>
+              <p className="user-name">{user?.name}</p>
+              <p className="user-email">{user?.email}</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Overlay */}
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}></div>
+      )}
+
+      {/* Main Content */}
+      <div className="dashboard-main">
+        <div className="order-history">
+          <div className="container">
+            <motion.div
+              className="page-header"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="header-left">
+                <button className="menu-btn" onClick={() => setSidebarOpen(true)}>
+                  <FiMenu />
+                </button>
+                <div>
+                  <h1 className="page-title">Order History</h1>
+                  <p className="page-subtitle">Track and manage all your printing orders</p>
+                </div>
+              </div>
+              <button className="theme-toggle-btn" onClick={toggleTheme} aria-label="Toggle theme">
+                {theme === 'light' ? <FiMoon size={22} /> : <FiSun size={22} />}
+              </button>
+            </motion.div>
 
         {error && (
           <div className="error-message">{error}</div>
@@ -214,6 +290,8 @@ const OrderHistory = () => {
             </motion.div>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );
