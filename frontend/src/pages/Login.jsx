@@ -43,7 +43,11 @@ const Login = () => {
     try {
       const response = await axios.post('/api/auth/login', formData);
       login(response.data);
-      navigate('/dashboard');
+      const role = response.data.role;
+      if (role === 'admin') navigate('/admin');
+      else if (role === 'shop_owner') navigate('/shop');
+      else if (role === 'rider') navigate('/rider');
+      else navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {
@@ -117,6 +121,11 @@ const Login = () => {
         </form>
 
         <div className="auth-footer">
+          <p style={{ marginBottom: '0.5rem' }}>
+            <Link to="/forgot-password" className="auth-link">
+              Forgot your password?
+            </Link>
+          </p>
           <p>
             Don't have an account?{' '}
             <Link to="/signup" className="auth-link">

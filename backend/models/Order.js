@@ -35,10 +35,39 @@ const orderSchema = new mongoose.Schema(
       enum: ['single', 'double'],
       default: 'single',
     },
+    orientation: {
+      type: String,
+      enum: ['portrait', 'landscape'],
+      default: 'portrait',
+    },
+    paperType: {
+      type: String,
+      enum: ['normal', 'glossy', 'matte'],
+      default: 'normal',
+    },
+    binding: {
+      type: String,
+      enum: ['none', 'staple', 'spiral'],
+      default: 'none',
+    },
     status: {
       type: String,
       enum: ['pending', 'processing', 'completed', 'cancelled'],
       default: 'pending',
+    },
+    rider: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    deliveryStatus: {
+      type: String,
+      enum: ['not_assigned', 'assigned', 'picked_up', 'in_transit', 'delivered'],
+      default: 'not_assigned',
+    },
+    deliveryNotes: {
+      type: String,
+      default: '',
     },
     totalPrice: {
       type: Number,
@@ -47,6 +76,10 @@ const orderSchema = new mongoose.Schema(
     deliveryAddress: {
       type: String,
       required: true,
+    },
+    converted: {
+      type: Boolean,
+      default: false,
     },
   },
   {

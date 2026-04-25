@@ -45,6 +45,7 @@ const Dashboard = () => {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [recentOrders, setRecentOrders] = useState([]);
   const [stats, setStats] = useState({
@@ -58,20 +59,35 @@ const Dashboard = () => {
     paperSize: 'A4',
     copies: 1,
     printSides: 'single',
+    orientation: 'portrait',
+    paperType: 'normal',
+    binding: 'none',
     deliveryAddress: user?.address || ''
   });
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [livePricing, setLivePricing] = useState(null);
 
-  const prices = {
-    'black-white': { single: 5, double: 8 },
-    'color': { single: 15, double: 25 }
+  // These are used only as fallbacks before API pricing loads
+  const defaultPricing = {
+    blackWhiteNormal: 3, blackWhiteGlossy: 5, blackWhiteMatte: 5,
+    colorNormal: 10, colorGlossy: 15, colorMatte: 15,
+    bindingStaple: 10, bindingSpiral: 30,
   };
 
   useEffect(() => {
     fetchOrderStats();
+    fetchPricing();
   }, []);
+
+  const fetchPricing = async () => {
+    try {
+      const { data } = await axios.get('/api/pricing');
+      setLivePricing(data);
+    } catch { /* use defaults */ }
+  };
 
   const fetchOrderStats = async () => {
     try {
@@ -154,8 +170,13 @@ const Dashboard = () => {
   };
 
   const calculatePrice = () => {
-    const basePrice = prices[orderDetails.printType][orderDetails.printSides];
-    return basePrice * orderDetails.copies;
+    const p = livePricing || defaultPricing;
+    const pt = orderDetails.printType === 'black-white' ? 'blackWhite' : 'color';
+    const paper = orderDetails.paperType === 'glossy' ? 'Glossy' : orderDetails.paperType === 'matte' ? 'Matte' : 'Normal';
+    const perPage = p[`${pt}${paper}`] || (orderDetails.printType === 'black-white' ? 3 : 10);
+    const doubleSurcharge = orderDetails.printSides === 'double' ? Math.floor(perPage * 0.6) : 0;
+    const bindingExtra = orderDetails.binding === 'staple' ? (p.bindingStaple || 10) : orderDetails.binding === 'spiral' ? (p.bindingSpiral || 30) : 0;
+    return (perPage + doubleSurcharge) * orderDetails.copies + bindingExtra;
   };
 
   const handleFileChange = (e) => {
@@ -167,6 +188,10 @@ const Dashboard = () => {
       }
       setSelectedFile(file);
       setError('');
+      // Create a preview URL for PDF and image files
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+      const previewable = file.type === 'application/pdf' || file.type.startsWith('image/');
+      setFilePreviewUrl(previewable ? URL.createObjectURL(file) : null);
     }
   };
 
@@ -191,36 +216,41 @@ const Dashboard = () => {
     }
 
     setUploading(true);
+    setUploadProgress(0);
     setError('');
     setSuccess('');
 
     try {
-      // In production, upload file to cloud storage first
-      // For now, we'll simulate with a dummy URL
-      const orderData = {
-        fileName: selectedFile.name,
-        fileUrl: 'http://example.com/files/' + selectedFile.name, // Placeholder
-        printType: orderDetails.printType,
-        paperSize: orderDetails.paperSize,
-        copies: parseInt(orderDetails.copies),
-        printSides: orderDetails.printSides,
-        totalPrice: calculatePrice(),
-        deliveryAddress: orderDetails.deliveryAddress
-      };
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('printType', orderDetails.printType);
+      formData.append('paperSize', orderDetails.paperSize);
+      formData.append('copies', orderDetails.copies);
+      formData.append('printSides', orderDetails.printSides);
+      formData.append('orientation', orderDetails.orientation);
+      formData.append('paperType', orderDetails.paperType);
+      formData.append('binding', orderDetails.binding);
+      formData.append('totalPrice', calculatePrice());
+      formData.append('deliveryAddress', orderDetails.deliveryAddress);
 
-      await axios.post('/api/orders', orderData);
-      setSuccess('Order placed successfully! Check your order history.');
-      fetchOrderStats(); // Update stats
-      setSelectedFile(null);
-      setOrderDetails({
-        ...orderDetails,
-        copies: 1
+      await axios.post('/api/orders', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percent);
+        },
       });
-      
-      // Reset file input
+
+      setSuccess('Order placed successfully! Check your order history.');
+      fetchOrderStats();
+      setSelectedFile(null);
+      setFilePreviewUrl(null);
+      setUploadProgress(0);
+      setOrderDetails({ ...orderDetails, copies: 1, binding: 'none', paperType: 'normal', orientation: 'portrait' });
       document.getElementById('file-input').value = '';
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to place order. Please try again.');
+      setUploadProgress(0);
     } finally {
       setUploading(false);
     }
@@ -427,9 +457,40 @@ const Dashboard = () => {
                 <label htmlFor="file-input" className="file-label">
                   <FiFile size={30} />
                   <span>{selectedFile ? selectedFile.name : 'Choose file to upload'}</span>
-                  <small>PDF, Word, or Image (Max 10MB)</small>
+                  <small>PDF, Word (DOCX auto-converted to PDF), or Image &mdash; Max 10 MB</small>
                 </label>
               </div>
+
+              {/* File Preview */}
+              {selectedFile && (
+                <div className="file-preview-panel">
+                  <div className="file-preview-header">
+                    <FiFile size={16} />
+                    <span className="file-preview-name">{selectedFile.name}</span>
+                    <span className="file-preview-size">({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+                  </div>
+                  {filePreviewUrl && selectedFile.type === 'application/pdf' && (
+                    <iframe
+                      src={filePreviewUrl}
+                      className="file-preview-iframe"
+                      title="PDF Preview"
+                    />
+                  )}
+                  {filePreviewUrl && selectedFile.type.startsWith('image/') && (
+                    <img
+                      src={filePreviewUrl}
+                      alt="Preview"
+                      className="file-preview-img"
+                    />
+                  )}
+                  {!filePreviewUrl && (
+                    <div className="file-preview-docx">
+                      <FiFile size={40} />
+                      <p>Word document ready to upload.<br /><small>It will be automatically converted to PDF.</small></p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="form-grid">
                 <div className="form-group">
@@ -496,6 +557,56 @@ const Dashboard = () => {
                     className="form-input"
                   />
                 </div>
+
+                <div className="form-group">
+                  <label htmlFor="orientation" className="form-label">
+                    Orientation
+                  </label>
+                  <select
+                    id="orientation"
+                    name="orientation"
+                    value={orderDetails.orientation}
+                    onChange={handleChange}
+                    className="form-input"
+                  >
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="paperType" className="form-label">
+                    Paper Type
+                  </label>
+                  <select
+                    id="paperType"
+                    name="paperType"
+                    value={orderDetails.paperType}
+                    onChange={handleChange}
+                    className="form-input"
+                  >
+                    <option value="normal">Normal (+Rs. 0)</option>
+                    <option value="glossy">Glossy (+Rs. 5/page)</option>
+                    <option value="matte">Matte (+Rs. 3/page)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="binding" className="form-label">
+                    Binding
+                  </label>
+                  <select
+                    id="binding"
+                    name="binding"
+                    value={orderDetails.binding}
+                    onChange={handleChange}
+                    className="form-input"
+                  >
+                    <option value="none">No Binding</option>
+                    <option value="staple">Staple (+Rs. 10)</option>
+                    <option value="spiral">Spiral Binding (+Rs. 30)</option>
+                  </select>
+                </div>
               </div>
 
               <div className="form-group">
@@ -523,8 +634,30 @@ const Dashboard = () => {
               </div>
 
               <button type="submit" className="btn btn-primary btn-block" disabled={uploading}>
-                {uploading ? 'Placing Order...' : 'Place Order'}
+                {uploading ? `Uploading... ${uploadProgress}%` : 'Place Order'}
               </button>
+
+              {uploading && (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <div style={{
+                    height: '6px',
+                    background: 'var(--border-color)',
+                    borderRadius: '3px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${uploadProgress}%`,
+                      background: 'var(--accent)',
+                      borderRadius: '3px',
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                  <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.25rem', textAlign: 'center' }}>
+                    {uploadProgress < 100 ? 'Uploading file...' : 'Saving order...'}
+                  </small>
+                </div>
+              )}
             </form>
           </motion.div>
 
@@ -537,10 +670,14 @@ const Dashboard = () => {
             <div className="card info-card">
               <h3><FiSettings /> Printing Options</h3>
               <ul>
-                <li>Black & White: Rs. 5 per page (single side)</li>
-                <li>Black & White: Rs. 8 per page (double side)</li>
-                <li>Color: Rs. 15 per page (single side)</li>
-                <li>Color: Rs. 25 per page (double side)</li>
+                <li>B&W Single Side: Rs. 5/page</li>
+                <li>B&W Double Side: Rs. 8/page</li>
+                <li>Color Single Side: Rs. 15/page</li>
+                <li>Color Double Side: Rs. 25/page</li>
+                <li>Glossy Paper: +Rs. 5/page</li>
+                <li>Matte Paper: +Rs. 3/page</li>
+                <li>Staple Binding: +Rs. 10</li>
+                <li>Spiral Binding: +Rs. 30</li>
               </ul>
             </div>
 

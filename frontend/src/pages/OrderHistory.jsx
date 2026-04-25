@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   FiPackage, FiClock, FiCheckCircle, FiXCircle, FiEye,
   FiMenu, FiX, FiHome, FiShoppingBag, FiUpload, FiLogOut, FiUser,
-  FiSun, FiMoon
+  FiSun, FiMoon, FiSlash
 } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -20,6 +20,7 @@ const OrderHistory = () => {
   const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [cancellingId, setCancellingId] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -39,6 +40,22 @@ const OrderHistory = () => {
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to cancel this order? This cannot be undone.')) return;
+    setCancellingId(orderId);
+    try {
+      await axios.put(`/api/orders/${orderId}/cancel`);
+      setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: 'cancelled' } : o));
+      if (selectedOrder?._id === orderId) {
+        setSelectedOrder(prev => ({ ...prev, status: 'cancelled' }));
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to cancel order.');
+    } finally {
+      setCancellingId(null);
+    }
   };
 
   const getStatusIcon = (status) => {
@@ -179,7 +196,12 @@ const OrderHistory = () => {
               >
                 <div className="order-header">
                   <div className="order-info">
-                    <h3 className="order-title">{order.fileName}</h3>
+                    <h3 className="order-title">
+                      {order.fileName}
+                      {order.converted && (
+                        <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', background: '#dbeafe', color: '#1e40af', borderRadius: '12px', padding: '2px 8px', fontWeight: 600, verticalAlign: 'middle' }}>PDF</span>
+                      )}
+                    </h3>
                     <span className="order-date">{formatDate(order.createdAt)}</span>
                   </div>
                   {getStatusIcon(order.status)}
@@ -206,6 +228,24 @@ const OrderHistory = () => {
                       {order.printSides === 'single' ? 'Single Side' : 'Double Side'}
                     </span>
                   </div>
+                  {order.orientation && (
+                    <div className="detail-row">
+                      <span className="detail-label">Orientation:</span>
+                      <span className="detail-value" style={{ textTransform: 'capitalize' }}>{order.orientation}</span>
+                    </div>
+                  )}
+                  {order.paperType && order.paperType !== 'normal' && (
+                    <div className="detail-row">
+                      <span className="detail-label">Paper Type:</span>
+                      <span className="detail-value" style={{ textTransform: 'capitalize' }}>{order.paperType}</span>
+                    </div>
+                  )}
+                  {order.binding && order.binding !== 'none' && (
+                    <div className="detail-row">
+                      <span className="detail-label">Binding:</span>
+                      <span className="detail-value" style={{ textTransform: 'capitalize' }}>{order.binding}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="order-footer">
@@ -215,12 +255,23 @@ const OrderHistory = () => {
                   <div className="order-price">Rs. {order.totalPrice}</div>
                 </div>
 
-                <button 
-                  className="btn btn-outline btn-sm"
-                  onClick={() => setSelectedOrder(order)}
-                >
-                  <FiEye /> View Details
-                </button>
+                <div className="order-actions">
+                  <button 
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setSelectedOrder(order)}
+                  >
+                    <FiEye /> View Details
+                  </button>
+                  {order.status === 'pending' && (
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => handleCancelOrder(order._id)}
+                      disabled={cancellingId === order._id}
+                    >
+                      <FiSlash /> {cancellingId === order._id ? 'Cancelling…' : 'Cancel Order'}
+                    </button>
+                  )}
+                </div>
               </motion.div>
             ))}
           </div>
@@ -239,7 +290,12 @@ const OrderHistory = () => {
               <div className="modal-body">
                 <div className="detail-row">
                   <span className="detail-label">File Name:</span>
-                  <span className="detail-value">{selectedOrder.fileName}</span>
+                  <span className="detail-value">
+                    {selectedOrder.fileName}
+                    {selectedOrder.converted && (
+                      <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', background: '#dbeafe', color: '#1e40af', borderRadius: '12px', padding: '2px 8px', fontWeight: 600 }}>Converted to PDF</span>
+                    )}
+                  </span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Order Date:</span>
@@ -265,6 +321,24 @@ const OrderHistory = () => {
                     {selectedOrder.printSides === 'single' ? 'Single Side' : 'Double Side'}
                   </span>
                 </div>
+                {selectedOrder.orientation && (
+                  <div className="detail-row">
+                    <span className="detail-label">Orientation:</span>
+                    <span className="detail-value" style={{ textTransform: 'capitalize' }}>{selectedOrder.orientation}</span>
+                  </div>
+                )}
+                {selectedOrder.paperType && (
+                  <div className="detail-row">
+                    <span className="detail-label">Paper Type:</span>
+                    <span className="detail-value" style={{ textTransform: 'capitalize' }}>{selectedOrder.paperType}</span>
+                  </div>
+                )}
+                {selectedOrder.binding && (
+                  <div className="detail-row">
+                    <span className="detail-label">Binding:</span>
+                    <span className="detail-value" style={{ textTransform: 'capitalize' }}>{selectedOrder.binding}</span>
+                  </div>
+                )}
                 <div className="detail-row">
                   <span className="detail-label">Delivery Address:</span>
                   <span className="detail-value">{selectedOrder.deliveryAddress}</span>
@@ -281,12 +355,23 @@ const OrderHistory = () => {
                 </div>
               </div>
 
-              <button 
-                className="btn btn-primary btn-block"
-                onClick={() => setSelectedOrder(null)}
-              >
-                Close
-              </button>
+              <div className="modal-actions">
+                {selectedOrder.status === 'pending' && (
+                  <button
+                    className="btn btn-danger btn-block"
+                    onClick={() => handleCancelOrder(selectedOrder._id)}
+                    disabled={cancellingId === selectedOrder._id}
+                  >
+                    <FiSlash /> {cancellingId === selectedOrder._id ? 'Cancelling…' : 'Cancel Order'}
+                  </button>
+                )}
+                <button 
+                  className="btn btn-primary btn-block"
+                  onClick={() => setSelectedOrder(null)}
+                >
+                  Close
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

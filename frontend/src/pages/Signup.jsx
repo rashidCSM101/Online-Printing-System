@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiMail, FiLock, FiUser, FiPhone, FiMapPin, FiAlertCircle } from 'react-icons/fi';
+import { FiMail, FiLock, FiUser, FiPhone, FiMapPin, FiAlertCircle, FiShoppingBag } from 'react-icons/fi';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
@@ -13,9 +13,13 @@ const Signup = () => {
     password: '',
     confirmPassword: '',
     phone: '',
-    address: ''
+    address: '',
+    shopName: '',
+    shopAddress: '',
   });
+  const [isShopOwner, setIsShopOwner] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { signup } = useAuth();
@@ -47,9 +51,18 @@ const Signup = () => {
     }
 
     try {
-      const { confirmPassword, ...signupData } = formData;
-      await axios.post('/api/auth/register', signupData);
-      // Redirect to login page after successful registration
+      const { confirmPassword, ...rest } = formData;
+      const signupData = { ...rest, role: isShopOwner ? 'shop_owner' : 'customer' };
+      const response = await axios.post('/api/auth/register', signupData);
+
+      if (isShopOwner) {
+        // Shop owner registration — no auto-login, show pending message
+        setSuccessMsg(response.data.message || 'Registration submitted! Please wait for admin approval.');
+        setLoading(false);
+        return;
+      }
+
+      // Redirect to login page after successful customer registration
       navigate('/login', { 
         state: { message: 'Account created successfully! Please login.' }
       });
@@ -80,7 +93,41 @@ const Signup = () => {
           </div>
         )}
 
+        {successMsg ? (
+          <div className="auth-success-card">
+            <FiShoppingBag size={40} style={{ color: 'var(--accent)', marginBottom: '1rem' }} />
+            <h3>Registration Submitted!</h3>
+            <p>{successMsg}</p>
+            <Link to="/login" className="btn btn-primary btn-block" style={{ marginTop: '1.5rem' }}>
+              Back to Login
+            </Link>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="auth-form">
+          {/* Account type toggle */}
+          <div className="account-type-toggle">
+            <button
+              type="button"
+              className={`toggle-btn ${!isShopOwner ? 'active' : ''}`}
+              onClick={() => setIsShopOwner(false)}
+            >
+              <FiUser /> Customer
+            </button>
+            <button
+              type="button"
+              className={`toggle-btn ${isShopOwner ? 'active' : ''}`}
+              onClick={() => setIsShopOwner(true)}
+            >
+              <FiShoppingBag /> Shop Owner
+            </button>
+          </div>
+
+          {isShopOwner && (
+            <div className="info-banner">
+              Your shop owner application will be reviewed by an admin before you can log in.
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="name" className="form-label">
               <FiUser /> Full Name
@@ -143,6 +190,40 @@ const Signup = () => {
             />
           </div>
 
+          {isShopOwner && (
+            <>
+              <div className="form-group">
+                <label htmlFor="shopName" className="form-label">
+                  <FiShoppingBag /> Shop Name
+                </label>
+                <input
+                  type="text"
+                  id="shopName"
+                  name="shopName"
+                  className="form-input"
+                  placeholder="Enter your shop name"
+                  value={formData.shopName}
+                  onChange={handleChange}
+                  required={isShopOwner}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="shopAddress" className="form-label">
+                  <FiMapPin /> Shop Address
+                </label>
+                <textarea
+                  id="shopAddress"
+                  name="shopAddress"
+                  className="form-input"
+                  placeholder="Enter your shop address"
+                  rows="2"
+                  value={formData.shopAddress}
+                  onChange={handleChange}
+                />
+              </div>
+            </>
+          )}
+
           <div className="form-group">
             <label htmlFor="password" className="form-label">
               <FiLock /> Password
@@ -176,9 +257,10 @@ const Signup = () => {
           </div>
 
           <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-            {loading ? 'Creating Account...' : 'Sign Up'}
+            {loading ? 'Creating Account...' : isShopOwner ? 'Submit Application' : 'Sign Up'}
           </button>
         </form>
+        )}
 
         <div className="auth-footer">
           <p>

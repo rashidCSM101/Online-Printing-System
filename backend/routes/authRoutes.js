@@ -1,7 +1,12 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { register, login, getProfile } from '../controllers/authController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import {
+  register, login, getProfile, updateProfile,
+  forgotPassword, resetPassword,
+  getAllUsers, updateUserRole, deleteUser,
+  approveShop, disableShop
+} from '../controllers/authController.js';
+import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -25,5 +30,17 @@ router.post(
 );
 
 router.get('/profile', protect, getProfile);
+router.put('/profile', protect, updateProfile);
+router.post('/forgot-password', forgotPassword);
+router.put('/reset-password/:token', resetPassword);
+
+// Admin user management
+router.get('/admin/users', protect, authorizeRoles('admin'), getAllUsers);
+router.put('/admin/users/:id/role', protect, authorizeRoles('admin'), updateUserRole);
+router.delete('/admin/users/:id', protect, authorizeRoles('admin'), deleteUser);
+
+// Admin shop approval
+router.put('/admin/shops/:id/approve', protect, authorizeRoles('admin'), approveShop);
+router.put('/admin/shops/:id/disable', protect, authorizeRoles('admin'), disableShop);
 
 export default router;

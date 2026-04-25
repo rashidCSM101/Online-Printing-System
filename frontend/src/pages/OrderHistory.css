@@ -463,6 +463,37 @@
   font-size: 0.9rem;
 }
 
+.order-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #b02a37;
+}
+
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;

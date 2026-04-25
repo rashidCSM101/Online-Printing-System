@@ -1,0 +1,260 @@
+/* Admin / Shop Dashboard styles */
+
+/* Header tab buttons */
+.admin-tabs {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--card-bg);
+  padding: 0.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.admin-tab-btn {
+  padding: 0.4rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.admin-tab-btn:hover {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
+
+.admin-tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Toolbar row above tables */
+.admin-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.admin-toolbar h2 {
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+}
+
+.count-badge {
+  font-size: 0.8rem;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.admin-filter-select {
+  padding: 0.45rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  min-width: 150px;
+}
+
+/* Scrollable table wrapper */
+.admin-table-wrap {
+  overflow-x: auto;
+  padding: 0;
+  border-radius: 12px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.admin-table thead tr {
+  background: var(--primary);
+  color: #fff;
+}
+
+.admin-table th {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-table th:first-child { border-radius: 12px 0 0 0; }
+.admin-table th:last-child  { border-radius: 0 12px 0 0; }
+
+.admin-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.admin-table tbody tr:hover {
+  background: var(--bg-secondary);
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* User cell with name + email stacked */
+.td-user {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.td-user small {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+/* Truncate long file names */
+.td-file {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Inline status dropdown (admin orders table) */
+.status-select,
+.role-select {
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.status-select:focus,
+.role-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Status badge (shop view - read-only) */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border: 1.5px solid;
+  border-radius: 999px;
+  font-size: 0.775rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+/* Icon action buttons */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.icon-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.icon-btn.danger:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Pagination row */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* Loading / empty states */
+.loading-state,
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.empty-state {
+  border-radius: 12px;
+}
+
+/* Alert banners */
+.alert {
+  padding: 0.85rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.alert-error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.alert-success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* btn-sm helper (re-declare in case Dashboard.css doesn't have it) */
+.btn-sm {
+  padding: 0.35rem 0.85rem !important;
+  font-size: 0.8rem !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-tabs {
+    display: none;
+  }
+
+  .admin-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.8rem;
+  }
+}
