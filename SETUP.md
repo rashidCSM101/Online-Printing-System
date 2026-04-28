@@ -141,13 +141,12 @@ node server.js
 You should see these two messages:
 ```
 Server running on port 5000
-MongoDB Connected: cluster0.xxxxx.mongodb.net
+MongoDB Connected: ac-xxxxxxx.mongodb.net
 ```
 
-If you see `MongoServerError: bad auth` — your username/password in `.env` is wrong.  
-If you see `ENOTFOUND` — check your internet or Atlas Network Access settings.
-
 > The backend API is now available at **http://localhost:5000**
+
+> **Note:** The project already has a DNS fix applied in `backend/config/db.js` that forces Google DNS (`8.8.8.8`) for MongoDB Atlas SRV lookups. This is needed on some Windows networks where the default DNS blocks Atlas connections. No action required on your end — it works automatically.
 
 ---
 
@@ -172,27 +171,31 @@ Open **http://localhost:3000** in your browser — the app will load.
 
 ## Step 7 — Create the First Admin Account
 
-There is no admin sign-up page (by design, for security). To create an admin user manually, follow these steps once the backend is running:
+There is no admin sign-up page (by design, for security). A ready-made script is included at `backend/createAdmin.js`.
 
-Open a third terminal and run:
+**Make sure the backend server is running first (Step 5), then open a second terminal:**
 
 ```bash
 cd backend
-node -e "
-import('./config/db.js').then(m => m.default()).then(async () => {
-  const { default: User } = await import('./models/User.js');
-  const { default: bcrypt } = await import('bcryptjs');
-  const hash = await bcrypt.hash('Admin@123', 12);
-  const u = await User.create({ name: 'Admin', email: 'admin@printsy.com', password: hash, role: 'admin' });
-  console.log('Admin created:', u.email);
-  process.exit(0);
-});
-"
+node createAdmin.js
 ```
 
-Log in at http://localhost:3000/login with:
-- **Email:** admin@printsy.com
-- **Password:** Admin@123
+Expected output:
+```
+MongoDB Connected: ...
+Admin created successfully: admin@printsy.com
+```
+
+If it says **"Admin already exists"** — the account is already in the database, skip this step.
+
+Log in at **http://localhost:3000/login** with:
+
+| Field | Value |
+|-------|-------|
+| Email | `admin@printsy.com` |
+| Password | `Admin@123` |
+
+> After logging in, go to the Admin Dashboard → Users tab to change the password.
 
 ---
 
@@ -252,12 +255,14 @@ Online-Printing-System/
 | Problem | Solution |
 |---------|----------|
 | `MongoServerError: bad auth` | Wrong username or password in `MONGODB_URI` |
-| `ENOTFOUND cluster0...` | No internet, or IP not whitelisted in Atlas Network Access |
-| `Port 5000 already in use` | Change `PORT=5001` in `backend/.env` |
+| `querySrv ECONNREFUSED` | Windows DNS blocking Atlas SRV — already fixed in `db.js` via Google DNS. If still failing, check your internet connection. |
+| `ENOTFOUND cluster0...` | No internet, or IP not whitelisted in Atlas Network Access — add `0.0.0.0/0` |
+| `Port 5000 already in use` | Run `npx kill-port 5000` or change `PORT=5001` in `backend/.env` |
 | `Cannot find module '...'` | Run `npm install` inside the `backend/` folder |
 | Frontend shows blank page | Make sure the backend is running on port 5000 first |
 | File upload fails | The `backend/uploads/` folder must exist (it is auto-created on first run) |
 | Email not sending | Add `EMAIL_USER` and `EMAIL_PASS` to `.env` (see Step 2 above) |
+| Admin can't log in | Run `node createAdmin.js` from the `backend/` folder |
 
 ---
 
@@ -281,18 +286,29 @@ All protected endpoints require an `Authorization: Bearer <token>` header.
 ## Quick Start (Summary)
 
 ```bash
-# Terminal 1 — Start Backend
+# Terminal 1 — Install & start backend
 cd backend
 npm install
 node server.js
+# Expected: "Server running on port 5000" + "MongoDB Connected: ..."
 
-# Terminal 2 — Start Frontend
+# Terminal 2 — Create admin account (first time only)
+cd backend
+node createAdmin.js
+# Expected: "Admin created successfully: admin@printsy.com"
+
+# Terminal 3 — Install & start frontend
 cd frontend
 npm install
 npm run dev
+# Expected: "Local: http://localhost:3000/"
 ```
 
 Then open **http://localhost:3000** in your browser.
+
+**Default Admin Login:**
+- Email: `admin@printsy.com`
+- Password: `Admin@123`
    - Theme toggle (light/dark mode)
    - Responsive design
 
