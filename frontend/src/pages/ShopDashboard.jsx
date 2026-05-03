@@ -9,6 +9,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+import NotificationBell from '../components/NotificationBell';
 import '../pages/Dashboard.css';
 import './AdminDashboard.css';
 
@@ -35,7 +36,7 @@ const ShopDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [ordersTotal, setOrdersTotal] = useState(0);
   const [ordersPage, setOrdersPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState('pending');
+  const [statusFilter, setStatusFilter] = useState('');
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
@@ -106,6 +107,19 @@ const ShopDashboard = () => {
     }
   };
 
+  const handleAutoAssignRider = async (orderId) => {
+    try {
+      const { data } = await axios.put(`/api/orders/${orderId}/auto-assign-rider`);
+      const updatedOrder = data.order;
+      setOrders((prev) => prev.map((o) => (o._id === orderId ? updatedOrder : o)));
+      if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
+      setSuccessMsg(data.message || 'Rider auto-assigned successfully.');
+      setTimeout(() => setSuccessMsg(''), 2500);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Auto-assign failed');
+    }
+  };
+
   const handleStatusChange = async (orderId, newStatus) => {
     try {
       await axios.put(`/api/orders/${orderId}/status`, { status: newStatus });
@@ -165,13 +179,11 @@ const ShopDashboard = () => {
   }, [rptFrom, rptTo]);
 
   const downloadEarningsCSV = () => {
-    const headers = ['Order ID', 'Customer', 'Status', 'Print Type', 'Copies', 'Total (Rs.)', 'Date'];
+    const headers = ['Order ID', 'Customer', 'Status', 'Total (Rs.)', 'Date'];
     const rows = rptOrders.map(o => [
       o._id,
       o.user?.name || '—',
       o.status,
-      o.printType,
-      o.copies,
       o.totalPrice,
       new Date(o.createdAt).toLocaleDateString(),
     ]);
@@ -237,7 +249,10 @@ const ShopDashboard = () => {
               ))}
             </div>
           </div>
-          <button className="theme-toggle" onClick={toggleTheme}>{theme === 'dark' ? <FiSun /> : <FiMoon />}</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+            <NotificationBell />
+            <button className="theme-toggle" onClick={toggleTheme}>{theme === 'dark' ? <FiSun /> : <FiMoon />}</button>
+          </div>
         </header>
 
         <div className="dashboard-content" style={{ padding: '2rem' }}>
@@ -318,7 +333,6 @@ const ShopDashboard = () => {
                         <tr>
                           <th>Customer</th>
                           <th>File</th>
-                          <th>Print Options</th>
                           <th>Price</th>
                           <th>Status</th>
                           <th>Date</th>
@@ -335,12 +349,6 @@ const ShopDashboard = () => {
                               </div>
                             </td>
                             <td className="td-file">{order.fileName}</td>
-                            <td>
-                              <small style={{ color: 'var(--text-secondary)' }}>
-                                {order.printType === 'black-white' ? 'B&W' : 'Color'} · {order.paperSize} · {order.copies}x
-                                <br />{order.printSides} · {order.paperType}{order.binding !== 'none' ? ` · ${order.binding}` : ''}
-                              </small>
-                            </td>
                             <td><strong>Rs. {order.totalPrice}</strong></td>
                             <td>
                               <span className="status-badge" style={{ color: STATUS_COLORS[order.status], borderColor: STATUS_COLORS[order.status] }}>
@@ -350,6 +358,11 @@ const ShopDashboard = () => {
                             <td><small>{new Date(order.createdAt).toLocaleDateString()}</small></td>
                             <td style={{ display: 'flex', gap: '0.4rem' }}>
                               <button className="icon-btn" title="View details" onClick={() => setSelectedOrder(order)}><FiEye /></button>
+                              {!order.rider && order.status === 'completed' && (
+                                <button className="btn btn-outline btn-sm" onClick={() => handleAutoAssignRider(order._id)}>
+                                  Auto Assign
+                                </button>
+                              )}
                               {NEXT_STATUS[order.status] && (
                                 <button
                                   className="btn btn-primary btn-sm"
@@ -490,14 +503,12 @@ const ShopDashboard = () => {
                   ) : (
                     <div className="card" style={{ padding: '1.5rem', overflowX: 'auto' }}>
                       <table className="users-table">
-                        <thead><tr><th>Order ID</th><th>Customer</th><th>Print Type</th><th>Copies</th><th>Status</th><th>Total (Rs.)</th><th>Date</th></tr></thead>
+                        <thead><tr><th>Order ID</th><th>Customer</th><th>Status</th><th>Total (Rs.)</th><th>Date</th></tr></thead>
                         <tbody>
                           {rptOrders.map(o => (
                             <tr key={o._id}>
                               <td><code style={{ fontSize: '0.8rem' }}>{o._id.slice(-8)}</code></td>
                               <td>{o.user?.name || '—'}</td>
-                              <td style={{ textTransform: 'capitalize' }}>{o.printType}</td>
-                              <td>{o.copies}</td>
                               <td><span style={{ background: ({ pending:'#f59e0b',processing:'#3b82f6',completed:'#10b981',cancelled:'#ef4444' }[o.status]||'#888')+'22', color: ({ pending:'#f59e0b',processing:'#3b82f6',completed:'#10b981',cancelled:'#ef4444' }[o.status]||'#888'), padding:'2px 10px', borderRadius:99, fontWeight:600, fontSize:'0.82rem' }}>{o.status}</span></td>
                               <td>{(o.totalPrice || 0).toLocaleString()}</td>
                               <td style={{ whiteSpace: 'nowrap' }}>{new Date(o.createdAt).toLocaleDateString()}</td>
@@ -523,13 +534,6 @@ const ShopDashboard = () => {
               {[
                 ['Customer', selectedOrder.user?.name],
                 ['File', selectedOrder.fileName],
-                ['Print Type', selectedOrder.printType === 'black-white' ? 'Black & White' : 'Color'],
-                ['Paper Size', selectedOrder.paperSize],
-                ['Copies', selectedOrder.copies],
-                ['Print Sides', selectedOrder.printSides],
-                ['Orientation', selectedOrder.orientation],
-                ['Paper Type', selectedOrder.paperType],
-                ['Binding', selectedOrder.binding],
                 ['Delivery Address', selectedOrder.deliveryAddress],
                 ['Total Price', `Rs. ${selectedOrder.totalPrice}`],
                 ['Status', selectedOrder.status],
@@ -538,7 +542,7 @@ const ShopDashboard = () => {
               ].map(([label, val]) => (
                 <div key={label} className="detail-row">
                   <span className="detail-label">{label}:</span>
-                  <span className="detail-value" style={{ textTransform: ['Orientation','Paper Type','Binding','Status','Print Sides','Print Type','Delivery Status'].includes(label) ? 'capitalize' : undefined }}>{val}</span>
+                  <span className="detail-value" style={{ textTransform: ['Status', 'Delivery Status'].includes(label) ? 'capitalize' : undefined }}>{val}</span>
                 </div>
               ))}
 
@@ -564,6 +568,14 @@ const ShopDashboard = () => {
                     >
                       Assign
                     </button>
+                    {!selectedOrder.rider && (
+                      <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => handleAutoAssignRider(selectedOrder._id)}
+                      >
+                        Auto Assign
+                      </button>
+                    )}
                   </div>
                   {riders.length === 0 && <small style={{ color: 'var(--text-secondary)' }}>No riders registered yet.</small>}
                 </div>

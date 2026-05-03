@@ -9,6 +9,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+import NotificationBell from '../components/NotificationBell';
 import '../pages/Dashboard.css';
 import './AdminDashboard.css';
 
@@ -49,6 +50,8 @@ const AdminDashboard = () => {
   // Riders for assignment
   const [riders, setRiders] = useState([]);
   const [assigningRider, setAssigningRider] = useState('');
+  const [assignableShops, setAssignableShops] = useState([]);
+  const [selectedShopOwner, setSelectedShopOwner] = useState('');
 
   // Auto-delete
   const [autoDeleting, setAutoDeleting] = useState(false);
@@ -108,6 +111,18 @@ const AdminDashboard = () => {
     } catch { /* silent */ }
   }, []);
 
+  const fetchAssignableShops = useCallback(async () => {
+    try {
+      const { data } = await axios.get('/api/auth/admin/users', {
+        params: { role: 'shop_owner', limit: 200 },
+      });
+      const approved = (data.users || []).filter((user) => user.shopStatus === 'approved');
+      setAssignableShops(approved);
+    } catch {
+      // Silent fail to avoid blocking admin dashboard.
+    }
+  }, []);
+
   const fetchShopOwners = useCallback(async () => {
     setShopOwnersLoading(true);
     try {
@@ -119,10 +134,17 @@ const AdminDashboard = () => {
     }
   }, []);
 
-  useEffect(() => { fetchStats(); fetchRiders(); }, [fetchStats, fetchRiders]);
+  useEffect(() => { fetchStats(); fetchRiders(); fetchAssignableShops(); }, [fetchStats, fetchRiders, fetchAssignableShops]);
   useEffect(() => { if (activeTab === 'orders') fetchOrders(); }, [activeTab, fetchOrders]);
   useEffect(() => { if (activeTab === 'users') fetchUsers(); }, [activeTab, fetchUsers]);
   useEffect(() => { if (activeTab === 'shops') fetchShopOwners(); }, [activeTab, fetchShopOwners]);
+  useEffect(() => {
+    if (!selectedOrder) {
+      setSelectedShopOwner('');
+      return;
+    }
+    setSelectedShopOwner(selectedOrder.shopOwner?._id || '');
+  }, [selectedOrder]);
 
   // ─── Reports state ────────────────────────────────────────────────
   const today = new Date().toISOString().slice(0, 10);
@@ -206,6 +228,46 @@ const AdminDashboard = () => {
       setTimeout(() => setSuccessMsg(''), 2500);
     } catch (e) {
       setError(e.response?.data?.message || 'Failed to assign rider');
+    }
+  };
+
+  const handleAutoAssignRider = async (orderId) => {
+    try {
+      const { data } = await axios.put(`/api/orders/${orderId}/auto-assign-rider`);
+      const updatedOrder = data.order;
+      setOrders((prev) => prev.map((o) => (o._id === orderId ? updatedOrder : o)));
+      if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
+      setSuccessMsg(data.message || 'Rider auto-assigned successfully.');
+      setTimeout(() => setSuccessMsg(''), 2500);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Auto-assign failed');
+    }
+  };
+
+  const handleAssignShop = async (orderId) => {
+    if (!selectedShopOwner) return;
+    try {
+      const { data } = await axios.put(`/api/orders/${orderId}/assign-shop`, { shopOwnerId: selectedShopOwner });
+      const updatedOrder = data.order;
+      setOrders((prev) => prev.map((order) => (order._id === orderId ? updatedOrder : order)));
+      if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
+      setSuccessMsg(data.message || 'Shop assigned successfully.');
+      setTimeout(() => setSuccessMsg(''), 2500);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to assign shop.');
+    }
+  };
+
+  const handleAutoAssignShop = async (orderId) => {
+    try {
+      const { data } = await axios.put(`/api/orders/${orderId}/auto-assign-shop`);
+      const updatedOrder = data.order;
+      setOrders((prev) => prev.map((order) => (order._id === orderId ? updatedOrder : order)));
+      if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
+      setSuccessMsg(data.message || 'Shop auto-assigned successfully.');
+      setTimeout(() => setSuccessMsg(''), 2500);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to auto-assign shop.');
     }
   };
 
@@ -318,7 +380,10 @@ const AdminDashboard = () => {
               ))}
             </div>
           </div>
-          <button className="theme-toggle" onClick={toggleTheme}>{theme === 'dark' ? <FiSun /> : <FiMoon />}</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+            <NotificationBell />
+            <button className="theme-toggle" onClick={toggleTheme}>{theme === 'dark' ? <FiSun /> : <FiMoon />}</button>
+          </div>
         </header>
 
         <div className="dashboard-content" style={{ padding: '2rem' }}>
@@ -425,6 +490,7 @@ const AdminDashboard = () => {
                           <th>File</th>
                           <th>Options</th>
                           <th>Price</th>
+                          <th>Assigned Shop</th>
                           <th>Status</th>
                           <th>Date</th>
                           <th>Actions</th>
@@ -448,6 +514,11 @@ const AdminDashboard = () => {
                             </td>
                             <td><strong>Rs. {order.totalPrice}</strong></td>
                             <td>
+                              <small>
+                                {order.shopOwner?.shopName || order.shopOwner?.name || 'Unassigned'}
+                              </small>
+                            </td>
+                            <td>
                               <select
                                 className="status-select"
                                 value={order.status}
@@ -462,6 +533,22 @@ const AdminDashboard = () => {
                             </td>
                             <td><small>{new Date(order.createdAt).toLocaleDateString()}</small></td>
                             <td>
+                              <button
+                                className="btn btn-outline btn-sm"
+                                style={{ marginRight: '0.35rem' }}
+                                onClick={() => handleAutoAssignShop(order._id)}
+                              >
+                                Auto Shop
+                              </button>
+                              {!order.rider && order.status === 'completed' && (
+                                <button
+                                  className="btn btn-outline btn-sm"
+                                  style={{ marginRight: '0.35rem' }}
+                                  onClick={() => handleAutoAssignRider(order._id)}
+                                >
+                                  Auto Assign
+                                </button>
+                              )}
                               <button className="icon-btn" title="View" onClick={() => setSelectedOrder(order)}><FiEdit2 /></button>
                             </td>
                           </tr>
@@ -731,6 +818,8 @@ const AdminDashboard = () => {
                 ['Delivery Address', selectedOrder.deliveryAddress],
                 ['Total Price', `Rs. ${selectedOrder.totalPrice}`],
                 ['Status', selectedOrder.status],
+                ['Assigned Shop', selectedOrder.shopOwner?.shopName || selectedOrder.shopOwner?.name || 'Unassigned'],
+                ['Assignment Mode', selectedOrder.shopAssignmentMethod || 'none'],
                 ['Delivery Status', selectedOrder.deliveryStatus?.replace(/_/g, ' ') || 'not assigned'],
                 ['Assigned Rider', selectedOrder.rider?.name || 'None'],
                 ['Placed On', new Date(selectedOrder.createdAt).toLocaleString()],
@@ -740,6 +829,43 @@ const AdminDashboard = () => {
                   <span className="detail-value" style={{ textTransform: ['Orientation','Paper Type','Binding','Status','Delivery Status'].includes(label) ? 'capitalize' : undefined }}>{val}</span>
                 </div>
               ))}
+
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                <p style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <FiShoppingBag /> Assign Shop
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <select
+                    className="form-input"
+                    value={selectedShopOwner}
+                    onChange={(e) => setSelectedShopOwner(e.target.value)}
+                    style={{ flex: 1, minWidth: 220 }}
+                  >
+                    <option value="">— Select shop —</option>
+                    {assignableShops.map((shop) => (
+                      <option key={shop._id} value={shop._id}>
+                        {shop.shopName || shop.name} ({shop.shopAddress || shop.email})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    disabled={!selectedShopOwner}
+                    onClick={() => handleAssignShop(selectedOrder._id)}
+                  >
+                    Assign Shop
+                  </button>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={() => handleAutoAssignShop(selectedOrder._id)}
+                  >
+                    Auto by Location
+                  </button>
+                </div>
+                {assignableShops.length === 0 && (
+                  <small style={{ color: 'var(--text-secondary)' }}>No approved shops available.</small>
+                )}
+              </div>
 
               {selectedOrder.status === 'completed' && (
                 <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
@@ -763,6 +889,14 @@ const AdminDashboard = () => {
                     >
                       Assign
                     </button>
+                    {!selectedOrder.rider && (
+                      <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => handleAutoAssignRider(selectedOrder._id)}
+                      >
+                        Auto Assign
+                      </button>
+                    )}
                   </div>
                   {riders.length === 0 && <small style={{ color: 'var(--text-secondary)' }}>No riders registered yet.</small>}
                 </div>

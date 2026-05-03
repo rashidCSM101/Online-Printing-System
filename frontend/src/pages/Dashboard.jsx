@@ -24,6 +24,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate, Link } from 'react-router-dom';
+import NotificationBell from '../components/NotificationBell';
 import './Dashboard.css';
 
 // Register ChartJS components
@@ -62,6 +63,7 @@ const Dashboard = () => {
     orientation: 'portrait',
     paperType: 'normal',
     binding: 'none',
+    paymentMethod: 'cod',
     deliveryAddress: user?.address || ''
   });
   const [uploading, setUploading] = useState(false);
@@ -230,6 +232,7 @@ const Dashboard = () => {
       formData.append('orientation', orderDetails.orientation);
       formData.append('paperType', orderDetails.paperType);
       formData.append('binding', orderDetails.binding);
+      formData.append('paymentMethod', orderDetails.paymentMethod);
       formData.append('totalPrice', calculatePrice());
       formData.append('deliveryAddress', orderDetails.deliveryAddress);
 
@@ -246,7 +249,7 @@ const Dashboard = () => {
       setSelectedFile(null);
       setFilePreviewUrl(null);
       setUploadProgress(0);
-      setOrderDetails({ ...orderDetails, copies: 1, binding: 'none', paperType: 'normal', orientation: 'portrait' });
+      setOrderDetails({ ...orderDetails, copies: 1, binding: 'none', paperType: 'normal', orientation: 'portrait', paymentMethod: 'cod' });
       document.getElementById('file-input').value = '';
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to place order. Please try again.');
@@ -322,9 +325,12 @@ const Dashboard = () => {
                     <p className="dashboard-subtitle">Here's what's happening with your printing orders today</p>
                   </div>
                 </div>
-                <button className="theme-toggle-btn" onClick={toggleTheme} aria-label="Toggle theme">
-                  {theme === 'light' ? <FiMoon size={22} /> : <FiSun size={22} />}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                  <NotificationBell />
+                  <button className="theme-toggle-btn" onClick={toggleTheme} aria-label="Toggle theme">
+                    {theme === 'light' ? <FiMoon size={22} /> : <FiSun size={22} />}
+                  </button>
+                </div>
               </div>
             </motion.div>
 
@@ -607,6 +613,26 @@ const Dashboard = () => {
                     <option value="spiral">Spiral Binding (+Rs. 30)</option>
                   </select>
                 </div>
+
+                <div className="form-group">
+                  <label htmlFor="paymentMethod" className="form-label">
+                    Payment Method
+                  </label>
+                  <select
+                    id="paymentMethod"
+                    name="paymentMethod"
+                    value={orderDetails.paymentMethod}
+                    onChange={handleChange}
+                    className="form-input"
+                  >
+                    <option value="cod">Cash on Delivery</option>
+                    <option value="jazzcash">JazzCash</option>
+                    <option value="easypaisa">Easypaisa</option>
+                    <option value="card">Card</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="wallet">Wallet</option>
+                  </select>
+                </div>
               </div>
 
               <div className="form-group">
@@ -670,14 +696,10 @@ const Dashboard = () => {
             <div className="card info-card">
               <h3><FiSettings /> Printing Options</h3>
               <ul>
-                <li>B&W Single Side: Rs. 5/page</li>
-                <li>B&W Double Side: Rs. 8/page</li>
-                <li>Color Single Side: Rs. 15/page</li>
-                <li>Color Double Side: Rs. 25/page</li>
-                <li>Glossy Paper: +Rs. 5/page</li>
-                <li>Matte Paper: +Rs. 3/page</li>
-                <li>Staple Binding: +Rs. 10</li>
-                <li>Spiral Binding: +Rs. 30</li>
+                <li>Prices are loaded from active shop pricing.</li>
+                <li>Total is now computed securely on the server.</li>
+                <li>Double-side and binding surcharges are included automatically.</li>
+                <li>Payment can be completed from your order history.</li>
               </ul>
             </div>
 

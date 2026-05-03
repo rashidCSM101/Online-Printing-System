@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import User from '../models/User.js';
 import sendEmail from '../utils/sendEmail.js';
 import { welcomeEmail, passwordResetEmail } from '../utils/emailTemplates.js';
+import { notifyUser } from '../utils/notifications.js';
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -53,6 +54,13 @@ export const register = async (req, res) => {
       // Send welcome email (non-blocking)
       const { subject, html } = welcomeEmail({ name: user.name });
       sendEmail({ to: user.email, subject, html }).catch(() => {});
+
+      notifyUser({
+        userId: user._id,
+        title: 'Welcome to Printsy',
+        message: 'Your account has been created successfully.',
+        type: 'account',
+      });
 
       // For shop owners, respond without token (must wait for approval)
       if (user.role === 'shop_owner') {
@@ -320,6 +328,13 @@ export const approveShop = async (req, res) => {
 
     user.shopStatus = 'approved';
     await user.save();
+    notifyUser({
+      userId: user._id,
+      title: 'Shop approved',
+      message: 'Your shop owner account is approved. You can now log in.',
+      type: 'account',
+      metadata: { status: 'approved', actorRole: req.user.role },
+    });
     res.json({ message: `${user.name}'s shop has been approved.`, user: { _id: user._id, name: user.name, shopStatus: user.shopStatus } });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -337,6 +352,13 @@ export const disableShop = async (req, res) => {
 
     user.shopStatus = 'disabled';
     await user.save();
+    notifyUser({
+      userId: user._id,
+      title: 'Shop disabled',
+      message: 'Your shop owner account has been disabled. Contact support for details.',
+      type: 'security',
+      metadata: { status: 'disabled', actorRole: req.user.role },
+    });
     res.json({ message: `${user.name}'s shop has been disabled.`, user: { _id: user._id, name: user.name, shopStatus: user.shopStatus } });
   } catch (error) {
     res.status(500).json({ message: error.message });

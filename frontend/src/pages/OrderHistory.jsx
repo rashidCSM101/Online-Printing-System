@@ -3,12 +3,13 @@ import { motion } from 'framer-motion';
 import { 
   FiPackage, FiClock, FiCheckCircle, FiXCircle, FiEye,
   FiMenu, FiX, FiHome, FiShoppingBag, FiUpload, FiLogOut, FiUser,
-  FiSun, FiMoon, FiSlash
+  FiSun, FiMoon, FiSlash, FiCreditCard, FiDownload
 } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import NotificationBell from '../components/NotificationBell';
 import './OrderHistory.css';
 
 const OrderHistory = () => {
@@ -21,6 +22,8 @@ const OrderHistory = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cancellingId, setCancellingId] = useState(null);
+  const [payingId, setPayingId] = useState(null);
+  const [payMethod, setPayMethod] = useState('cod');
 
   useEffect(() => {
     fetchOrders();
@@ -55,6 +58,36 @@ const OrderHistory = () => {
       setError(err.response?.data?.message || 'Failed to cancel order.');
     } finally {
       setCancellingId(null);
+    }
+  };
+
+  const handlePayOrder = async (orderId) => {
+    setPayingId(orderId);
+    try {
+      const { data } = await axios.put(`/api/orders/${orderId}/pay`, { paymentMethod: payMethod });
+      const updatedOrder = data.order;
+      setOrders((prev) => prev.map((o) => (o._id === orderId ? updatedOrder : o)));
+      if (selectedOrder?._id === orderId) setSelectedOrder(updatedOrder);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Payment failed. Please try again.');
+    } finally {
+      setPayingId(null);
+    }
+  };
+
+  const handleDownloadFile = async (orderId, fileName) => {
+    try {
+      const response = await axios.get(`/api/orders/${orderId}/file`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName || 'order-file');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.response?.data?.message || 'File download failed.');
     }
   };
 
@@ -167,6 +200,7 @@ const OrderHistory = () => {
               <button className="theme-toggle-btn" onClick={toggleTheme} aria-label="Toggle theme">
                 {theme === 'light' ? <FiMoon size={22} /> : <FiSun size={22} />}
               </button>
+              <NotificationBell />
             </motion.div>
 
         {error && (
@@ -246,6 +280,18 @@ const OrderHistory = () => {
                       <span className="detail-value" style={{ textTransform: 'capitalize' }}>{order.binding}</span>
                     </div>
                   )}
+                  <div className="detail-row">
+                    <span className="detail-label">Delivery:</span>
+                    <span className="detail-value" style={{ textTransform: 'capitalize' }}>
+                      {(order.deliveryStatus || 'not_assigned').replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Payment:</span>
+                    <span className="detail-value" style={{ textTransform: 'capitalize' }}>
+                      {order.paymentStatus || 'unpaid'} ({(order.paymentMethod || 'cod').replace(/_/g, ' ')})
+                    </span>
+                  </div>
                 </div>
 
                 <div className="order-footer">
@@ -262,6 +308,21 @@ const OrderHistory = () => {
                   >
                     <FiEye /> View Details
                   </button>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={() => handleDownloadFile(order._id, order.fileName)}
+                  >
+                    <FiDownload /> File
+                  </button>
+                  {order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => handlePayOrder(order._id)}
+                      disabled={payingId === order._id}
+                    >
+                      <FiCreditCard /> {payingId === order._id ? 'Paying...' : 'Pay Now'}
+                    </button>
+                  )}
                   {order.status === 'pending' && (
                     <button
                       className="btn btn-danger btn-sm"
@@ -349,6 +410,38 @@ const OrderHistory = () => {
                     {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
                   </span>
                 </div>
+                <div className="detail-row">
+                  <span className="detail-label">Delivery Status:</span>
+                  <span className="detail-value" style={{ textTransform: 'capitalize' }}>
+                    {(selectedOrder.deliveryStatus || 'not_assigned').replace(/_/g, ' ')}
+                  </span>
+                </div>
+                {selectedOrder.rider && (
+                  <div className="detail-row">
+                    <span className="detail-label">Rider:</span>
+                    <span className="detail-value">
+                      {selectedOrder.rider.name} {selectedOrder.rider.phone ? `(${selectedOrder.rider.phone})` : ''}
+                    </span>
+                  </div>
+                )}
+                <div className="detail-row">
+                  <span className="detail-label">Payment:</span>
+                  <span className="detail-value" style={{ textTransform: 'capitalize' }}>
+                    {selectedOrder.paymentStatus || 'unpaid'} ({(selectedOrder.paymentMethod || 'cod').replace(/_/g, ' ')})
+                  </span>
+                </div>
+                {selectedOrder.paidAt && (
+                  <div className="detail-row">
+                    <span className="detail-label">Paid At:</span>
+                    <span className="detail-value">{formatDate(selectedOrder.paidAt)}</span>
+                  </div>
+                )}
+                {selectedOrder.paymentReference && (
+                  <div className="detail-row">
+                    <span className="detail-label">Payment Ref:</span>
+                    <span className="detail-value">{selectedOrder.paymentReference}</span>
+                  </div>
+                )}
                 <div className="detail-row total">
                   <span className="detail-label">Total Price:</span>
                   <span className="detail-value price-large">Rs. {selectedOrder.totalPrice}</span>
@@ -356,6 +449,38 @@ const OrderHistory = () => {
               </div>
 
               <div className="modal-actions">
+                {selectedOrder.paymentStatus !== 'paid' && selectedOrder.status !== 'cancelled' && (
+                  <>
+                    <select
+                      className="form-input"
+                      value={payMethod}
+                      onChange={(e) => setPayMethod(e.target.value)}
+                      style={{ marginBottom: '0.5rem' }}
+                    >
+                      <option value="cod">Cash on Delivery</option>
+                      <option value="jazzcash">JazzCash</option>
+                      <option value="easypaisa">Easypaisa</option>
+                      <option value="card">Card</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="wallet">Wallet</option>
+                    </select>
+                    <button
+                      className="btn btn-primary btn-block"
+                      onClick={() => handlePayOrder(selectedOrder._id)}
+                      disabled={payingId === selectedOrder._id}
+                      style={{ marginBottom: '0.5rem' }}
+                    >
+                      <FiCreditCard /> {payingId === selectedOrder._id ? 'Paying...' : 'Pay Order'}
+                    </button>
+                  </>
+                )}
+                <button
+                  className="btn btn-outline btn-block"
+                  onClick={() => handleDownloadFile(selectedOrder._id, selectedOrder.fileName)}
+                  style={{ marginBottom: '0.5rem' }}
+                >
+                  <FiDownload /> Download File
+                </button>
                 {selectedOrder.status === 'pending' && (
                   <button
                     className="btn btn-danger btn-block"

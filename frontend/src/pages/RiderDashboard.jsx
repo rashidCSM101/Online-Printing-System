@@ -9,6 +9,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+import NotificationBell from '../components/NotificationBell';
 import '../pages/Dashboard.css';
 import './AdminDashboard.css';
 
@@ -158,7 +159,10 @@ const RiderDashboard = () => {
               ))}
             </div>
           </div>
-          <button className="theme-toggle" onClick={toggleTheme}>{theme === 'dark' ? <FiSun /> : <FiMoon />}</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+            <NotificationBell />
+            <button className="theme-toggle" onClick={toggleTheme}>{theme === 'dark' ? <FiSun /> : <FiMoon />}</button>
+          </div>
         </header>
 
         <div className="dashboard-content" style={{ padding: '2rem' }}>

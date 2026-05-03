@@ -55,6 +55,20 @@ const orderSchema = new mongoose.Schema(
       enum: ['pending', 'processing', 'completed', 'cancelled'],
       default: 'pending',
     },
+    shopOwner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    shopAssignmentMethod: {
+      type: String,
+      enum: ['none', 'location', 'admin'],
+      default: 'none',
+    },
+    shopAssignedAt: {
+      type: Date,
+      default: null,
+    },
     rider: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -73,6 +87,24 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    paymentStatus: {
+      type: String,
+      enum: ['unpaid', 'paid', 'failed', 'refunded'],
+      default: 'unpaid',
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['cod', 'card', 'bank_transfer', 'wallet', 'jazzcash', 'easypaisa'],
+      default: 'cod',
+    },
+    paymentReference: {
+      type: String,
+      default: '',
+    },
+    paidAt: {
+      type: Date,
+      default: null,
+    },
     deliveryAddress: {
       type: String,
       required: true,
@@ -86,6 +118,11 @@ const orderSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ deliveryStatus: 1, updatedAt: -1 });
+orderSchema.index({ paymentStatus: 1, createdAt: -1 });
+orderSchema.index({ shopOwner: 1, createdAt: -1 });
 
 const Order = mongoose.model('Order', orderSchema);
 
