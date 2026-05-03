@@ -1,195 +1,245 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiPrinter, FiZap, FiShield, FiTruck, FiArrowRight } from 'react-icons/fi';
+import {
+  FiArrowRight,
+  FiCheckCircle,
+  FiLayers,
+  FiPrinter,
+  FiShield,
+  FiTruck,
+  FiZap,
+} from 'react-icons/fi';
 import './Landing.css';
 
+const featureCards = [
+  {
+    icon: <FiZap />,
+    label: 'Fast Turnaround',
+    title: 'Ready-to-print queue with rapid processing',
+    description:
+      'Jobs are routed quickly so urgent files can move from upload to print with minimal waiting.',
+  },
+  {
+    icon: <FiShield />,
+    label: 'Secure Files',
+    title: 'Your documents stay protected and private',
+    description:
+      'Secure handling and controlled access keep personal and academic files safe throughout the flow.',
+  },
+  {
+    icon: <FiLayers />,
+    label: 'Flexible Options',
+    title: 'Control quality, paper, and output details',
+    description:
+      'Configure print settings with clarity and confidence before placing any order.',
+  },
+  {
+    icon: <FiTruck />,
+    label: 'Reliable Delivery',
+    title: 'Doorstep service with transparent status',
+    description:
+      'Track each stage from confirmation to dispatch with dependable local delivery support.',
+  },
+];
+
+const workflowSteps = [
+  {
+    title: 'Upload Your Document',
+    description: 'Submit PDF, DOCX, or image files from any device in seconds.',
+  },
+  {
+    title: 'Choose Print Settings',
+    description: 'Select paper, color mode, sides, and quantity before checkout.',
+  },
+  {
+    title: 'Confirm And Pay',
+    description: 'Review pricing clearly and place the order with a smooth checkout flow.',
+  },
+  {
+    title: 'Track And Receive',
+    description: 'Monitor status updates and receive your prints at your selected location.',
+  },
+];
+
+const trustMetrics = [
+  { value: '15 min', label: 'Avg. processing time' },
+  { value: '98%', label: 'On-time fulfillment' },
+  { value: '24/7', label: 'Order placement access' },
+];
+
+const promisePoints = [
+  'Professional output quality',
+  'Transparent order status',
+  'Secure file handling',
+  'Campus-friendly delivery',
+];
+
+const riseIn = {
+  hidden: { opacity: 0, y: 30 },
+  show: (delay = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.55, delay },
+  }),
+};
+
 const Landing = () => {
-  useEffect(() => {
-    const observerOptions = {
-      threshold: 0.1,
-      rootMargin: '0px 0px -100px 0px'
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('animate-in');
-        }
-      });
-    }, observerOptions);
-
-    document.querySelectorAll('.animate-on-scroll').forEach((el) => {
-      observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, []);
-
-  const features = [
-    {
-      icon: <FiZap />,
-      title: 'Fast Printing',
-      description: 'Get your documents printed in minutes with our quick service'
-    },
-    {
-      icon: <FiShield />,
-      title: 'Secure & Safe',
-      description: 'Your documents are protected with end-to-end encryption'
-    },
-    {
-      icon: <FiTruck />,
-      title: 'Home Delivery',
-      description: 'We deliver your printed documents right to your doorstep'
-    },
-    {
-      icon: <FiPrinter />,
-      title: 'Quality Print',
-      description: 'High-quality printing with color and black & white options'
-    }
-  ];
-
   return (
     <div className="landing">
-      {/* Hero Section */}
       <section className="hero">
-        <div className="container">
+        <div className="hero-grid-overlay" aria-hidden="true" />
+        <div className="container hero-shell">
           <motion.div
             className="hero-content"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            initial="hidden"
+            animate="show"
+            variants={riseIn}
+            custom={0}
           >
-            <h1 className="hero-title">
-              Print Your Documents
-              <span className="gradient-text"> Online</span>
-            </h1>
+            <span className="eyebrow">Professional Online Printing</span>
+            <h1 className="hero-title">From Upload To Doorstep In One Smooth Flow</h1>
             <p className="hero-subtitle">
-              Fast, secure, and reliable online printing service with home delivery.
-              Upload your files and get them printed in minutes!
+              Printsy helps students and teams place high-quality print jobs online with secure handling,
+              clear pricing, and dependable delivery.
             </p>
+
+            <ul className="hero-promise-list">
+              {promisePoints.map((point) => (
+                <li key={point}>
+                  <FiCheckCircle className="promise-icon" />
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+
             <div className="hero-buttons">
-              <Link to="/signup">
-                <button className="btn btn-primary btn-large">
-                  Get Started <FiArrowRight />
-                </button>
+              <Link to="/signup" className="btn btn-primary btn-large">
+                Start Printing <FiArrowRight />
               </Link>
-              <a href="#features">
-                <button className="btn btn-outline btn-large">
-                  Learn More
-                </button>
-              </a>
+              <Link to="/login" className="btn btn-outline btn-large">
+                Sign In
+              </Link>
+            </div>
+
+            <div className="hero-metrics">
+              {trustMetrics.map((metric) => (
+                <div key={metric.label} className="metric-card">
+                  <strong>{metric.value}</strong>
+                  <span>{metric.label}</span>
+                </div>
+              ))}
             </div>
           </motion.div>
 
           <motion.div
-            className="hero-image"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            className="hero-visual"
+            initial={{ opacity: 0, y: 26, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.75, delay: 0.18 }}
           >
-            <div className="image-placeholder">
-              <FiPrinter size={120} />
+            <div className="hero-image-shell">
+              <div className="hero-image-glow" aria-hidden="true" />
+              <img
+                src="/images-removebg-preview.png"
+                alt="Printer ready for document printing"
+                className="hero-printer-image"
+                loading="lazy"
+              />
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Features Section */}
       <section className="features" id="features">
         <div className="container">
-          <h2 className="section-title animate-on-scroll">Why Choose Us?</h2>
-          <p className="section-subtitle animate-on-scroll">
-            We provide the best online printing experience with amazing features
-          </p>
+          <div className="section-heading">
+            <p className="eyebrow">Why Teams Choose Printsy</p>
+            <h2 className="section-title">A reliable print workflow built for real deadlines</h2>
+          </div>
 
           <div className="features-grid">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                className="feature-card card animate-on-scroll"
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
+            {featureCards.map((feature, index) => (
+              <motion.article
+                key={feature.title}
+                className="feature-card"
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.2 }}
+                variants={riseIn}
+                custom={index * 0.08}
               >
-                <div className="feature-icon">{feature.icon}</div>
+                <div className="feature-top">
+                  <span className="feature-icon">{feature.icon}</span>
+                  <span className="feature-label">{feature.label}</span>
+                </div>
                 <h3 className="feature-title">{feature.title}</h3>
                 <p className="feature-description">{feature.description}</p>
+              </motion.article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="how-it-works">
+        <div className="container">
+          <div className="section-heading">
+            <p className="eyebrow">Simple Process</p>
+            <h2 className="section-title">How your order moves from file to final print</h2>
+          </div>
+
+          <div className="steps">
+            {workflowSteps.map((step, index) => (
+              <motion.div
+                key={step.title}
+                className="step"
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.35 }}
+                variants={riseIn}
+                custom={index * 0.1}
+              >
+                <span className="step-index">{`0${index + 1}`}</span>
+                <h3 className="step-title">{step.title}</h3>
+                <p className="step-description">{step.description}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section className="how-it-works">
-        <div className="container">
-          <h2 className="section-title animate-on-scroll">How It Works</h2>
-          
-          <div className="steps">
-            <div className="step animate-on-scroll">
-              <div className="step-number">1</div>
-              <h3 className="step-title">Upload Your File</h3>
-              <p className="step-description">
-                Upload your document in PDF, Word, or image format
-              </p>
-            </div>
-
-            <div className="step animate-on-scroll">
-              <div className="step-number">2</div>
-              <h3 className="step-title">Choose Options</h3>
-              <p className="step-description">
-                Select paper size, color mode, and number of copies
-              </p>
-            </div>
-
-            <div className="step animate-on-scroll">
-              <div className="step-number">3</div>
-              <h3 className="step-title">Place Order</h3>
-              <p className="step-description">
-                Confirm your order and provide delivery address
-              </p>
-            </div>
-
-            <div className="step animate-on-scroll">
-              <div className="step-number">4</div>
-              <h3 className="step-title">Get Delivered</h3>
-              <p className="step-description">
-                Receive your printed documents at your doorstep
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
       <section className="cta">
         <div className="container">
           <motion.div
-            className="cta-content animate-on-scroll"
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
+            className="cta-card"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55 }}
             viewport={{ once: true }}
           >
-            <h2 className="cta-title">Ready to Get Started?</h2>
+            <p className="eyebrow">Ready To Print</p>
+            <h2 className="cta-title">Upgrade your document workflow with Printsy</h2>
             <p className="cta-description">
-              Join thousands of satisfied customers who trust us with their printing needs
+              Create an account, upload your first file, and experience a cleaner and faster print journey.
             </p>
-            <Link to="/signup">
-              <button className="btn btn-primary btn-large">
-                Create Account Now <FiArrowRight />
-              </button>
-            </Link>
+            <div className="cta-actions">
+              <Link to="/signup" className="btn btn-primary btn-large">
+                Create Free Account <FiArrowRight />
+              </Link>
+              <a href="#features" className="cta-link">
+                Explore features
+              </a>
+            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="footer">
-        <div className="container">
-          <p>&copy; 2026 PrintHub. All rights reserved.</p>
+        <div className="container footer-row">
+          <span className="footer-brand">
+            <FiPrinter /> Printsy
+          </span>
+          <p>2026 Printsy. Crafted for students, offices, and fast-moving teams.</p>
         </div>
       </footer>
     </div>
